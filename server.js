@@ -12,11 +12,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5020;
 const JWT_SECRET = process.env.JWT_SECRET || 'yogesh7877';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://yogeshkhinchi2005:Jyoti@cluster0.op1bsfl.mongodb.net';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/expense-tracker';
 
 // Middleware
 app.use(cors({
-  origin: 'https://expense-v56y.onrender.com',
+  origin: 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());
@@ -640,7 +640,7 @@ process.on('SIGINT', async () => {
 app.listen(PORT, () => {
   console.log('\n🚀 Server is running successfully!');
   console.log(`📍 Port: ${PORT}`);
-  console.log(`🌐 API URL: https://expense-v56y.onrender.com/api`);
+  console.log(`🌐 API URL: http://localhost:${PORT}/api`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   console.log(`💾 Database: MongoDB`);
   console.log(`🔐 Authentication: JWT with HTTP-only cookies`);
