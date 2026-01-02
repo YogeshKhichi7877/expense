@@ -26,8 +26,6 @@ const userSchema = new mongoose.Schema({
   toJSON: { transform: (doc, ret) => { delete ret.password; return ret; } }
 });
 
-// Create indexes for better performance
-userSchema.index({ email: 1 });
 
 const User = mongoose.model('User', userSchema);
 export default User ;
