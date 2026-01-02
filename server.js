@@ -5,6 +5,12 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import setupCronJobs from './cron/weeklyReport.js';
+import User from './models/User.js';
+import Budget from './models/Budget.js';
+import Expense from './models/Expense.js';
+import { sendWeeklyReport } from './utils/emailService.js';
+import { format ,subDays } from 'date-fns';
 
 // Load environment variables
 dotenv.config();
@@ -32,100 +38,27 @@ mongoose.connect(MONGODB_URI)
     console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
-
-// User Schema
-const userSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: [true, 'Name is required'],
-    trim: true,
-    minlength: [2, 'Name must be at least 2 characters long']
-  },
-  email: { 
-    type: String, 
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
-  password: { 
-    type: String, 
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters long']
-  }
-}, { 
-  timestamps: true,
-  toJSON: { transform: (doc, ret) => { delete ret.password; return ret; } }
+  // Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.stack);
+  res.status(500).json({ 
+    message: 'Something went wrong!', 
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
 });
 
-// Create indexes for better performance
-userSchema.index({ email: 1 });
 
-const User = mongoose.model('User', userSchema);
-
-// Expense Schema
-const expenseSchema = new mongoose.Schema({
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: [true, 'User ID is required'],
-    index: true
-  },
-  item_name: { 
-    type: String, 
-    required: [true, 'Item name is required'],
-    trim: true,
-    maxlength: [30, 'Item name cannot exceed 30 characters']
-  },
-  category: { 
-    type: String, 
-    required: [true, 'Category is required'],
-    enum: {
-      values: [
-    '🍔Food & Drinks',
-  '🚗Transport',
-  '🎉Entertainment',
-  '📚Study Materials',
-  '💊Health & Medical',
-  '🛍️Shopping',
-  '💡Bills & Utilities',
-  '📝Other'
-      ],
-      message: 'Invalid category selected'
-    }
-  },
-  price: { 
-    type: Number, 
-    required: [true, 'Price is required'],
-    min: [0, 'Price cannot be negative'],
-    validate: {
-      validator: function(v) {
-        return v >= 0 && v <= 1000000; // Max 10 lakh rupees
-      },
-      message: 'Price must be between 0 and 10,00,000'
-    }
-  },
-  date: { 
-    type: String, 
-    required: [true, 'Date is required'],
-    validate: {
-      validator: function(v) {
-        return /^\d{4}-\d{2}-\d{2}$/.test(v);
-      },
-      message: 'Date must be in YYYY-MM-DD format'
-    }
-  }
-}, { 
-  timestamps: true 
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await mongoose.connection.close();
+  console.log('📦 MongoDB connection closed');
+  process.exit(0);
 });
 
-// Create compound indexes for better query performance
-expenseSchema.index({ userId: 1, date: -1 });
-expenseSchema.index({ userId: 1, category: 1 });
-expenseSchema.index({ userId: 1, createdAt: -1 });
 
-const Expense = mongoose.model('Expense', expenseSchema);
+
+setupCronJobs();
 
 // Auth middleware
 const authenticateToken = async (req, res, next) => {
@@ -151,6 +84,36 @@ const authenticateToken = async (req, res, next) => {
     res.status(400).json({ message: 'Invalid token.' });
   }
 };
+
+
+//test route 
+// 🚀 MANUAL TRIGGER: Run the Weekly Report logic NOW for all users
+app.get('/api/test-db-email', async (req, res) => {
+  try {
+    // 1. Fetch the first user from MongoDB
+    const user = await User.findOne(); 
+
+    if (!user) {
+      return res.status(404).send('❌ No users found in database to send email to.');
+    }
+
+    console.log(`found user: ${user.email}`);
+
+    // 2. Send email to THAT user's real address
+    await sendWeeklyReport(
+      user.email,             // <--- Real email from DB
+      user.name,              // <--- Real name from DB
+      [{ item_name: '🍕 DB Test Pizza', category: 'Test', price: 50 }], 
+      50, 
+      'Test Start', 'Test End'
+    );
+    
+    res.send(`✅ Email sent to database user: ${user.email}`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('❌ Error: ' + error.message);
+  }
+});
 
 // Auth Routes
 
@@ -301,16 +264,38 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// Expense Routes (Protected)
+app.get('/api/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
+  try {
+    const budgets = await Budget.find({ user: req.user.userId }); // 👈 Fixed req.user.userId
+    res.json(budgets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
+  const { category, limit } = req.body;
+  try {
+    const budget = await Budget.findOneAndUpdate(
+      { user: req.user.userId, category },
+      { limit },
+      { new: true, upsert: true } // Create if not exists
+    );
+    res.json(budget);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // GET all expenses for authenticated user
 app.get('/api/expenses', authenticateToken, async (req, res) => {
   try {
-    const expenses = await Expense.find({ userId: req.user.userId })
-      .sort({ createdAt: -1 })
-      .limit(1000); // Limit for performance
-
-    console.log(`📊 Fetched ${expenses.length} expenses for user: ${req.user.email}`);
+    // ✅ FIX: Query by 'user', not 'userId'
+    const expenses = await Expense.find({ user: req.user.userId })
+      .sort({ date: -1 });
+      
+    console.log(`Fetched ${expenses.length} expenses for user: ${req.user.email}`);
     res.json(expenses);
   } catch (error) {
     console.error('Get expenses error:', error);
@@ -328,7 +313,7 @@ app.get('/api/expenses/range', authenticateToken, async (req, res) => {
     }
 
     const expenses = await Expense.find({
-      userId: req.user.userId,
+      user: req.user.userId,
       date: {
         $gte: startDate,
         $lte: endDate
@@ -342,7 +327,31 @@ app.get('/api/expenses/range', authenticateToken, async (req, res) => {
   }
 });
 
-// GET single expense by ID for authenticated user
+// // GET single expense by ID for authenticated user
+// app.get('/api/expenses/:id', authenticateToken, async (req, res) => {
+//   try {
+//     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+//       return res.status(400).json({ message: 'Invalid expense ID' });
+//     }
+
+//     const expense = await Expense.findOne({ 
+//       _id: req.params.id, 
+//       userId: req.user.userId 
+//     });
+    
+//     if (!expense) {
+//       return res.status(404).json({ message: 'Expense not found' });
+//     }
+    
+//     res.json(expense);
+//   } catch (error) {
+//     console.error('Get expense error:', error);
+//     res.status(500).json({ message: 'Error fetching expense', error: error.message });
+//   }
+// });
+
+
+// GET single expense by ID
 app.get('/api/expenses/:id', authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -351,7 +360,7 @@ app.get('/api/expenses/:id', authenticateToken, async (req, res) => {
 
     const expense = await Expense.findOne({ 
       _id: req.params.id, 
-      userId: req.user.userId 
+      user: req.user.userId  // ✅ FIX: Changed 'userId' to 'user'
     });
     
     if (!expense) {
@@ -365,7 +374,57 @@ app.get('/api/expenses/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// POST create new expense for authenticated user
+
+// // POST create new expense for authenticated user
+// app.post('/api/expenses', authenticateToken, async (req, res) => {
+//   try {
+//     const { item_name, category, price, date } = req.body;
+
+//     // Validation
+//     if (!item_name || !category || !price || !date) {
+//       return res.status(400).json({ 
+//         message: 'All fields are required: item_name, category, price, date' 
+//       });
+//     }
+
+//     if (price < 0) {
+//       return res.status(400).json({ message: 'Price cannot be negative' });
+//     }
+
+//     // Check if date is not in future
+//     const expenseDate = new Date(date);
+//     const today = new Date();
+//     today.setHours(23, 59, 59, 999); // End of today
+
+//     if (expenseDate > today) {
+//       return res.status(400).json({ message: 'Cannot add expenses for future dates' });
+//     }
+
+//     const expense = new Expense({
+//       userId: req.user.userId,
+//       item_name: item_name.trim(),
+//       category,
+//       price: parseFloat(price),
+//       date
+//     });
+
+//     await expense.save();
+
+//     console.log(`💰 New expense added: ₹${price} for ${item_name} by ${req.user.email}`);
+//     res.status(201).json(expense);
+//   } catch (error) {
+//     console.error('Create expense error:', error);
+//     if (error.name === 'ValidationError') {
+//       const messages = Object.values(error.errors).map(err => err.message);
+//       return res.status(400).json({ message: messages.join(', ') });
+//     }
+//     res.status(400).json({ message: 'Error creating expense', error: error.message });
+//   }
+// });
+
+
+// server.js
+
 app.post('/api/expenses', authenticateToken, async (req, res) => {
   try {
     const { item_name, category, price, date } = req.body;
@@ -381,17 +440,18 @@ app.post('/api/expenses', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Price cannot be negative' });
     }
 
-    // Check if date is not in future
     const expenseDate = new Date(date);
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    today.setHours(23, 59, 59, 999); 
 
     if (expenseDate > today) {
       return res.status(400).json({ message: 'Cannot add expenses for future dates' });
     }
 
     const expense = new Expense({
-      userId: req.user.userId,
+      // ❌ OLD: userId: req.user.userId,
+      // ✅ NEW: use 'user' to match your Schema
+      user: req.user.userId, 
       item_name: item_name.trim(),
       category,
       price: parseFloat(price),
@@ -411,6 +471,7 @@ app.post('/api/expenses', authenticateToken, async (req, res) => {
     res.status(400).json({ message: 'Error creating expense', error: error.message });
   }
 });
+
 
 // PUT update expense for authenticated user
 app.put('/api/expenses/:id', authenticateToken, async (req, res) => {
@@ -444,7 +505,7 @@ app.put('/api/expenses/:id', authenticateToken, async (req, res) => {
     if (date) updateData.date = date;
 
     const expense = await Expense.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.userId },
+      { _id: req.params.id, user: req.user.userId },
       updateData,
       { new: true, runValidators: true }
     );
@@ -474,7 +535,7 @@ app.delete('/api/expenses/:id', authenticateToken, async (req, res) => {
 
     const expense = await Expense.findOneAndDelete({ 
       _id: req.params.id, 
-      userId: req.user.userId 
+      user : req.user.userId 
     });
     
     if (!expense) {
@@ -510,13 +571,13 @@ app.get('/api/expenses/stats/summary', authenticateToken, async (req, res) => {
 
     // Today's expenses
     const todayExpenses = await Expense.find({
-      userId: req.user.userId,
+      user: req.user.userId,
       date: todayStr
     });
 
     // Monthly expenses
     const monthlyExpenses = await Expense.find({
-      userId: req.user.userId,
+      user: req.user.userId,
       date: {
         $gte: monthStartStr,
         $lte: monthEndStr
@@ -525,7 +586,7 @@ app.get('/api/expenses/stats/summary', authenticateToken, async (req, res) => {
 
     // Last 30 days expenses
     const last30DaysExpenses = await Expense.find({
-      userId: req.user.userId,
+      user: req.user.userId,
       date: {
         $gte: thirtyDaysAgoStr,
         $lte: todayEndStr
@@ -539,7 +600,7 @@ app.get('/api/expenses/stats/summary', authenticateToken, async (req, res) => {
     const categoryBreakdown = await Expense.aggregate([
       {
         $match: {
-          userId: new mongoose.Types.ObjectId(req.user.userId),
+          user: new mongoose.Types.ObjectId(req.user.userId),
           date: {
             $gte: monthStartStr,
             $lte: monthEndStr
@@ -614,27 +675,12 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
-
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await mongoose.connection.close();
-  console.log('📦 MongoDB connection closed');
-  process.exit(0);
-});
+
 
 // Start server
 app.listen(PORT, () => {

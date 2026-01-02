@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import StatsCards from '../components/StatsCards';
@@ -9,6 +11,7 @@ import PieChart from '../components/PieChart';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import { useExpenses, Expense } from '../contexts/ExpenseContext';
+import BudgetCards from '../components/BudgetCards'; // ✅ Fixed typo here
 import Footer from '../components/Footer';
 
 const Dashboard: React.FC = () => {
@@ -53,26 +56,37 @@ const Dashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {state.error && <ErrorMessage message={state.error} />}
         
+        {/* Top Stats */}
         <StatsCards expenses={state.expenses} />
         
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Calendar Section */}
           <div className="xl:col-span-2">
             <ExpenseCalendar
               expenses={state.expenses}
               onDateSelect={handleDateSelect}
             />
           </div>
-          <div className="space-y-2">
+
+          {/* Sidebar: Charts & Recent */}
+          <div className="space-y-8"> {/* Increased spacing for better look */}
             <ExpenseChart expenses={state.expenses} />
             <RecentExpenses 
               expenses={state.expenses} 
               onEditExpense={handleEditExpense}
             />
           </div>
-           
         </div>
-        <div className="mt-2">
-          <PieChart expenses={state.expenses} />
+
+        {/* Bottom Section: Budgets & Pie Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <BudgetCards /> {/* ✅ Placed Budget Cards here */}
+          </div>
+          <div>
+            <PieChart expenses={state.expenses} />
+          </div>
         </div>
         
       </main>
@@ -89,9 +103,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-
 export default Dashboard;
-
-
-
-

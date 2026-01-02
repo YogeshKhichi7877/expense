@@ -1,4 +1,14 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5020/api';
+const API_BASE_URL =  'http://localhost:5020/api';
+
+
+export interface Budget {
+  _id: string;
+  user: string;
+  category: string;
+  limit: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface Expense {
   _id?: string;
@@ -128,6 +138,19 @@ class ApiService {
   // Get expense statistics
   async getExpenseStats(): Promise<ExpenseStats> {
     return this.request<ExpenseStats>('/expenses/stats/summary');
+  }
+
+  // Get all budgets for the current user
+  async getBudgets(): Promise<Budget[]> {
+    return this.request<Budget[]>('/budgets');
+  }
+
+  // Set or Update a budget limit for a category
+  async setBudget(category: string, limit: number): Promise<Budget> {
+    return this.request<Budget>('/budgets', {
+      method: 'POST',
+      body: JSON.stringify({ category, limit }),
+    });
   }
 
   // Health check

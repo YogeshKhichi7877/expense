@@ -5,7 +5,7 @@ const Footer = () => {
     <div className="bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
       <div className="max-w-3xl mx-auto py-4 px-6">
         <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-          &copy; {new Date().getFullYear()} Tiffin. All rights reserved.
+          &copy; {new Date().getFullYear()} Expense Tracker. All rights reserved.
         </p>
         <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 mt-1">
           Made and maintained with ❤️ by Yogesh Khinchi .
