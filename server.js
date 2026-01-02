@@ -55,25 +55,6 @@ mongoose.connect(MONGODB_URI)
     console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
-  // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
-
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await mongoose.connection.close();
-  console.log('📦 MongoDB connection closed');
-  process.exit(0);
-});
-
-
 
 setupCronJobs();
 
@@ -691,6 +672,25 @@ app.get('/api/health', async (req, res) => {
     });
   }
 });
+
+  // Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.stack);
+  res.status(500).json({ 
+    message: 'Something went wrong!', 
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
+});
+
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await mongoose.connection.close();
+  console.log('📦 MongoDB connection closed');
+  process.exit(0);
+});
+
 
 // 404 handler
 app.use('*', (req, res) => {
