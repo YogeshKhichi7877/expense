@@ -24,7 +24,7 @@ const allowedOrigins = [
   'https://expensetracker-sigma-ecru.vercel.app', // Your Vercel production URL
   'http://localhost:5173',                       // Your local Vite/React dev port
   'http://localhost:3000',                        // Alternative local port
-  'https://expensetracker-lygm.onrender.com'
+  'https://expensetracker-f2q2.onrender.com'
 ];
 
 app.use(cors({

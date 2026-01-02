@@ -1,4 +1,4 @@
-const API_BASE_URL =  'https://expensetracker-lygm.onrender.com/api';
+const API_BASE_URL =  'https://expensetracker-f2q2.onrender.com/api';
 
 
 export interface Budget {
