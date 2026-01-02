@@ -22,7 +22,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/expens
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://expensetracker-lygm.onrender.com',
   credentials: true
 }));
 app.use(express.json());
