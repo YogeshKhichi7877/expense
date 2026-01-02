@@ -83,6 +83,9 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+app.get('/' , (eq,res)=>{
+  res.send('api is working fine ')
+});
 
 //test route 
 // 🚀 MANUAL TRIGGER: Run the Weekly Report logic NOW for all users
@@ -674,13 +677,13 @@ app.get('/api/health', async (req, res) => {
 });
 
   // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
+// app.use((err, req, res, next) => {
+//   console.error('Unhandled error:', err.stack);
+//   res.status(500).json({ 
+//     message: 'Something went wrong!', 
+//     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+//   });
+// });
 
 
 // Graceful shutdown
