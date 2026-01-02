@@ -20,10 +20,27 @@ const PORT = process.env.PORT || 5020;
 const JWT_SECRET = process.env.JWT_SECRET || 'yogesh7877';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/expense-tracker';
 
-// Middleware
+const allowedOrigins = [
+  'https://expensetracker-sigma-ecru.vercel.app', // Your Vercel production URL
+  'http://localhost:5173',                       // Your local Vite/React dev port
+  'http://localhost:3000',                        // Alternative local port
+  'https://expensetracker-lygm.onrender.com'
+];
+
 app.use(cors({
-  origin: 'https://expensetracker-lygm.onrender.com',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(cookieParser());
