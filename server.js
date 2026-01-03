@@ -21,11 +21,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'yogesh7877';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/expense-tracker';
 
 const allowedOrigins = [
-  'https://expensetracker-sigma-ecru.vercel.app', // Your Vercel production URL
-  'http://localhost:5173',                       // Your local Vite/React dev port
-  'http://localhost:3000',                        // Alternative local port
-  'https://expensetracker-f2q2.onrender.com'
-];
+'https://expensetracker2-eight.vercel.app',
+  'https://expensetracker-sigma-ecru.vercel.app',
+  'http://localhost:5173'
+]; 
 
 app.use(cors({
   origin: function (origin, callback) {
