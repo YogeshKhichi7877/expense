@@ -249,6 +249,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = new User({ name, email: email.toLowerCase(), password: hashedPassword });
     await user.save();
+    console.log('user saved to database at the time of register ;');
 
     const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     console.log("token aa gaya : " , token)
@@ -272,9 +273,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user || !( bcrypt.compare(password, user.password))) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
-
+    console.log("token send kiya login me ")
     const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-
+  console.log('token mil gaya login me ')
     res.cookie('token', token, {
       httpOnly: true,
       secure: isProduction,
