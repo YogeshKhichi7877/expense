@@ -117,122 +117,171 @@ app.get('/api/test-db-email', async (req, res) => {
 
 // Auth Routes
 
-// Register
+// // Register
+// app.post('/api/auth/register', async (req, res) => {
+//   try {
+//     const { name, email, password } = req.body;
+
+//     // Validation
+//     if (!name || !email || !password) {
+//       return res.status(400).json({ message: 'All fields are required' });
+//     }
+
+//     if (password.length < 6) {
+//       return res.status(400).json({ message: 'Password must be at least 6 characters' });
+//     }
+
+//     // Check if user already exists
+//     const existingUser = await User.findOne({ email: email.toLowerCase() });
+//     if (existingUser) {
+//       return res.status(400).json({ message: 'User already exists with this email' });
+//     }
+
+//     // Hash password
+//     const saltRounds = 12;
+//     const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+//     // Create user
+//     const user = new User({
+//       name: name.trim(),
+//       email: email.toLowerCase().trim(),
+//       password: hashedPassword
+//     });
+
+//     await user.save();
+
+//     // Generate JWT token
+//     const token = jwt.sign(
+//       { userId: user._id, email: user.email },
+//       JWT_SECRET,
+//       { expiresIn: '7d' }
+//     );
+
+//     // Set cookie
+//     res.cookie('token', token, {
+//       httpOnly: true,
+//   secure: false,        // Must be true for cross-site
+//   sameSite: 'lax' ,    // Required for Vercel -> Render communication
+//   maxAge: 7 * 24 * 60 * 60 * 1000
+//     });
+
+//     console.log(`✅ New user registered: ${user.email}`);
+
+//     res.status(201).json({
+//       message: 'User registered successfully',
+//       user: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Registration error:', error);
+//     if (error.code === 11000) {
+//       return res.status(400).json({ message: 'Email already exists' });
+//     }
+//     res.status(500).json({ message: 'Error registering user', error: error.message });
+//   }
+// });
+
+// // Login
+// app.post('/api/auth/login', async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     // Validation
+//     if (!email || !password) {
+//       return res.status(400).json({ message: 'Email and password are required' });
+//     }
+
+//     // Find user
+//     const user = await User.findOne({ email: email.toLowerCase() });
+//     if (!user) {
+//       return res.status(400).json({ message: 'Invalid email or password' });
+//     }
+
+//     // Check password
+//     const isValidPassword = await bcrypt.compare(password, user.password);
+//     if (!isValidPassword) {
+//       return res.status(400).json({ message: 'Invalid email or password' });
+//     }
+
+//     // Generate JWT token
+//     const token = jwt.sign(
+//       { userId: user._id, email: user.email },
+//       JWT_SECRET,
+//       { expiresIn: '7d' }
+//     );
+
+//     // Set cookie
+//      res.cookie('token', token, {
+//       httpOnly: true,
+//       secure: false,        // Must be true for cross-site
+//       sameSite: 'lax' ,    // Required for Vercel -> Render communication
+//        maxAge: 7 * 24 * 60 * 60 * 1000
+//     });
+
+//     console.log(`✅ User logged in: ${user.email}`);
+
+//     res.json({
+//       message: 'Login successful',
+//       user: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     res.status(500).json({ message: 'Error logging in', error: error.message });
+//   }
+// });
+
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    // Validation
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with this email' });
-    }
+    if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
-    // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Create user
-    const user = new User({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      password: hashedPassword
-    });
-
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = new User({ name, email: email.toLowerCase(), password: hashedPassword });
     await user.save();
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    // Set cookie
     res.cookie('token', token, {
       httpOnly: true,
-  secure: true,        // Must be true for cross-site
-  sameSite: 'none',    // Required for Vercel -> Render communication
-  maxAge: 7 * 24 * 60 * 60 * 1000
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    console.log(`✅ New user registered: ${user.email}`);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email
-      }
-    });
+    res.status(201).json({ user: { _id: user._id, name: user.name, email: user.email } });
   } catch (error) {
-    console.error('Registration error:', error);
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Email already exists' });
-    }
-    res.status(500).json({ message: 'Error registering user', error: error.message });
+    res.status(500).json({ message: 'Error registering', error: error.message });
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(400).json({ message: 'Invalid email or password' });
-    }
+    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Set cookie
     res.cookie('token', token, {
-     httpOnly: true,
-  secure: true,        // Must be true for cross-site
-  sameSite: 'none',    // Required for Vercel -> Render communication
-  maxAge: 7 * 24 * 60 * 60 * 1000
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    console.log(`✅ User logged in: ${user.email}`);
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email
-      }
-    });
+    res.json({ user: { _id: user._id, name: user.name, email: user.email } });
   } catch (error) {
-    console.error('Login error:', error);
     res.status(500).json({ message: 'Error logging in', error: error.message });
   }
 });

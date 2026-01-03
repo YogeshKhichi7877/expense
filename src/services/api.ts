@@ -1,5 +1,8 @@
-const API_BASE_URL =  'https://localhost:5020/api';
+// const API_BASE_URL =  'http://localhost:5020/api';
 
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5020/api' 
+  : 'https://expensetracker-f2q2.onrender.com/api'; // Add /api at the end
 
 export interface Budget {
   _id: string;
