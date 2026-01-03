@@ -52,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const response = await apiService.login(email, password);
+       console.log("response of login : " , response )
       setState(prev => ({
         ...prev,
         user: response.user,
@@ -72,6 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const response = await apiService.register(name, email, password);
+      console.log("response of register : " , response )
       setState(prev => ({
         ...prev,
         user: response.user,
