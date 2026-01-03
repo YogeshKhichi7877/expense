@@ -118,7 +118,7 @@ app.get('/api/test-db-email', async (req, res) => {
 // Auth Routes
 
 // Register
-app.post('/auth/register', async (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -160,9 +160,9 @@ app.post('/auth/register', async (req, res) => {
     // Set cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  secure: true,        // Must be true for cross-site
+  sameSite: 'none',    // Required for Vercel -> Render communication
+  maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     console.log(`✅ New user registered: ${user.email}`);
@@ -185,7 +185,7 @@ app.post('/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/auth/login', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -215,10 +215,10 @@ app.post('/auth/login', async (req, res) => {
 
     // Set cookie
     res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+     httpOnly: true,
+  secure: true,        // Must be true for cross-site
+  sameSite: 'none',    // Required for Vercel -> Render communication
+  maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     console.log(`✅ User logged in: ${user.email}`);
@@ -238,13 +238,13 @@ app.post('/auth/login', async (req, res) => {
 });
 
 // Logout
-app.post('/auth/logout', (req, res) => {
+app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
 });
 
 // Get current user
-app.get('/auth/me', authenticateToken, async (req, res) => {
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
@@ -264,7 +264,7 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
+app.get('/api/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
   try {
     const budgets = await Budget.find({ user: req.user.userId }); // 👈 Fixed req.user.userId
     res.json(budgets);
@@ -273,7 +273,7 @@ app.get('/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
   }
 });
 
-app.post('/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
+app.post('/api/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
   const { category, limit } = req.body;
   try {
     const budget = await Budget.findOneAndUpdate(
@@ -289,7 +289,7 @@ app.post('/budgets', authenticateToken, async (req, res) => { // 👈 Fixed Path
 
 
 // GET all expenses for authenticated user
-app.get('/expenses', authenticateToken, async (req, res) => {
+app.get('/api/expenses', authenticateToken, async (req, res) => {
   try {
     // ✅ FIX: Query by 'user', not 'userId'
     const expenses = await Expense.find({ user: req.user.userId })
@@ -304,7 +304,7 @@ app.get('/expenses', authenticateToken, async (req, res) => {
 });
 
 // GET expenses by date range for authenticated user
-app.get('/expenses/range', authenticateToken, async (req, res) => {
+app.get('/api/expenses/range', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
@@ -352,7 +352,7 @@ app.get('/expenses/range', authenticateToken, async (req, res) => {
 
 
 // GET single expense by ID
-app.get('/expenses/:id', authenticateToken, async (req, res) => {
+app.get('/api/expenses/:id', authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid expense ID' });
@@ -425,7 +425,7 @@ app.get('/expenses/:id', authenticateToken, async (req, res) => {
 
 // server.js
 
-app.post('/expenses', authenticateToken, async (req, res) => {
+app.post('/api/expenses', authenticateToken, async (req, res) => {
   try {
     const { item_name, category, price, date } = req.body;
 
@@ -474,7 +474,7 @@ app.post('/expenses', authenticateToken, async (req, res) => {
 
 
 // PUT update expense for authenticated user
-app.put('/expenses/:id', authenticateToken, async (req, res) => {
+app.put('/api/expenses/:id', authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid expense ID' });
@@ -527,7 +527,7 @@ app.put('/expenses/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE expense for authenticated user
-app.delete('/expenses/:id', authenticateToken, async (req, res) => {
+app.delete('/api/expenses/:id', authenticateToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid expense ID' });
@@ -551,7 +551,7 @@ app.delete('/expenses/:id', authenticateToken, async (req, res) => {
 });
 
 // GET expense statistics for authenticated user
-app.get('/expenses/stats/summary', authenticateToken, async (req, res) => {
+app.get('/api/expenses/stats/summary', authenticateToken, async (req, res) => {
   try {
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
