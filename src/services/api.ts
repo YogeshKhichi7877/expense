@@ -1,4 +1,4 @@
-const API_BASE_URL =  'https://expensetracker-f2q2.onrender.com/api';
+const API_BASE_URL =  'https://localhost:5020/api';
 
 
 export interface Budget {
