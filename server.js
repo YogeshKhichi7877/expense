@@ -14,6 +14,8 @@ import { format ,subDays } from 'date-fns';
 
 // Load environment variables
 dotenv.config();
+// Add this line to define the environment
+const isProduction = process.env.NODE_ENV === 'production';
 
 const app = express();
 const PORT = process.env.PORT || 5020;
@@ -287,8 +289,17 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Logout
+// app.post('/api/auth/logout', (req, res) => {
+//   res.clearCookie('token');
+//   res.json({ message: 'Logged out successfully' });
+// });
+
 app.post('/api/auth/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax'
+  });
   res.json({ message: 'Logged out successfully' });
 });
 
